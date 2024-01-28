@@ -903,8 +903,10 @@ async def auto_filter(client, msg, spoll=False):
                 await message.delete()
             except:
                 pass
+            return
         else:
             await message.reply_text(cap + final_link_text + del_msg, reply_markup=InlineKeyboardMarkup(btn), disable_web_page_preview=True)
+            return
     if imdb and imdb.get('poster'):
         try:
             if settings["auto_delete"]:
