@@ -16,6 +16,18 @@ def is_valid_ip(ip):
     ip_pattern = r'\b(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\b'
     return re.match(ip_pattern, ip) is not None
 
+def default_rsultmode(mode):
+    data = environ.get('DEFAULT_RESULT_MODE', mode)
+    if data.lower() in ["Button", "Buttons", "button", "buttons"]:
+        return "button"
+    elif data.lower() in ["Link", "Links", "link", "links"]:
+        return "links"
+    elif data.lower() in ["Telegraph", "telegraph"]:
+        return "telegraph"
+    else:
+        print(f'Error - {type} is invalid, exiting now')
+        exit()
+
 # Bot information
 API_ID = environ.get('API_ID', '')
 if len(API_ID) == 0:
@@ -111,6 +123,7 @@ AUTO_FILTER = is_enabled('AUTO_FILTER', True)
 IMDB = is_enabled('IMDB', True)
 SPELL_CHECK = is_enabled("SPELL_CHECK", True)
 SHORTLINK = is_enabled('SHORTLINK', False)
+DEFAULT_RESULT_MODE = default_rsultmode('links')
 
 # for stream
 IS_STREAM = is_enabled('IS_STREAM', True)
