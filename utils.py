@@ -237,7 +237,7 @@ def get_wish():
     return status
 
 async def rsltpg_nam(settings):
-    if settings=="buttons":
+    if settings=="button":
         name = "🧲 Button"
     elif settings=="links":
         name = "⛓️ Links"
