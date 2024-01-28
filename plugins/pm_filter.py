@@ -11,7 +11,7 @@ from info import ADMINS, URL, MAX_BTN, BIN_CHANNEL, IS_STREAM, DELETE_TIME, FILM
 from pyrogram.types import InlineKeyboardMarkup, InlineKeyboardButton, CallbackQuery, ChatPermissions
 from pyrogram import Client, filters, enums
 from pyrogram.errors import FloodWait, UserIsBlocked, MessageNotModified, PeerIdInvalid, ChatAdminRequired
-from utils import get_size, is_subscribed, is_check_admin, get_wish, get_shortlink, get_verify_status, update_verify_status, get_readable_time, get_poster, temp, get_settings, save_group_settings
+from utils import get_size, is_subscribed, is_check_admin, get_wish, get_shortlink, get_verify_status, update_verify_status, get_readable_time, get_poster, temp, get_settings, save_group_settings, rsltpg_name
 from database.users_chats_db import db
 from database.ia_filterdb import Media, get_file_details, get_search_results,delete_files
 import logging
@@ -206,6 +206,26 @@ async def next_page(bot, query):
     btn.append(
         [InlineKeyboardButton("🚫 ᴄʟᴏsᴇ 🚫", callback_data="close_data")]
     )
+    if settings['result_page'] == "telegraph":
+        telegraph = Telegraph()
+        botid = (await client.get_me()).id
+        await telegraph.create_account(short_name=botid)
+        headline = "Hᴇʀᴇ ɪ ғᴏᴜɴᴅ ʀᴇsᴜʟᴛs ᴏɴ ʏᴏᴜʀ ᴏ̨ᴜᴇʀʏ {search}..."
+        response = await telegraph.create_page(headline, html_content=files_link)
+        telegraph_link = response['url']
+        final_link_text = """[ 🎦 Click Me For Results ! ](telegraph_link)"""
+        if settings["auto_delete"]:
+            k = await message.reply_text(cap + final_link_text + del_msg, reply_markup=InlineKeyboardMarkup(btn), disable_web_page_preview=True)
+            await asyncio.sleep(DELETE_TIME)
+            await k.delete()
+            try:
+                await message.delete()
+            except:
+                pass
+            return
+        else:
+            await query.message.edit_text(cap + final_link_text + del_msg, reply_markup=InlineKeyboardMarkup(btn), disable_web_page_preview=True)
+            return
     try:
         await query.message.edit_text(cap + files_link + del_msg, reply_markup=InlineKeyboardMarkup(btn), disable_web_page_preview=True)
     except MessageNotModified:
@@ -605,7 +625,7 @@ async def cb_handler(client: Client, query: CallbackQuery):
                 InlineKeyboardButton('✅ Yes' if settings["shortlink"] else '❌ No', callback_data=f'setgs#shortlink#{settings["shortlink"]}#{grp_id}'),
             ],[
                 InlineKeyboardButton('Result Page', callback_data=f'setgs#links#{settings["links"]}#{str(grp_id)}'),
-                InlineKeyboardButton('⛓ Link' if settings["links"] else '🧲 Button', callback_data=f'setgs#links#{settings["links"]}#{str(grp_id)}')
+                InlineKeyboardButton(await rsltpg_name(settings['result_page']), callback_data=f'setgroupsettings#result_page#{grpid}')
             ],[
                 InlineKeyboardButton('Fsub', callback_data=f'setgs#is_fsub#{settings.get("is_fsub", IS_FSUB)}#{str(grp_id)}'),
                 InlineKeyboardButton('✅ On' if settings.get("is_fsub", IS_FSUB) else '❌ Off', callback_data=f'setgs#is_fsub#{settings.get("is_fsub", IS_FSUB)}#{str(grp_id)}')
@@ -619,6 +639,33 @@ async def cb_handler(client: Client, query: CallbackQuery):
             await query.message.edit_reply_markup(reply_markup)
         else:
             await query.message.edit_text("Something went wrong!")
+
+    elif query.data.startswith("setgroupsettings"):
+        ident, set_type, grp_id = query.data.split("#")
+        userid = query.from_user.id if query.from_user else None
+        if not await is_check_admin(client, int(grp_id), userid):
+            await query.answer("This Is Not For You!", show_alert=True)
+            return
+
+        btn = [[
+            InlineKeyboardButton("🧲 Buttons", callback_data=f'{ident}#button#{grp_id}')
+        ],[
+            InlineKeyboardButton("⛓️ Links", callback_data=f'{ident}#links#{grp_id}')
+        ],[
+            InlineKeyboardButton("📰 Telegraph", callback_data=f'{ident}#telegraph#{grp_id}')
+        ]]
+
+        if set_type == "result_page":
+            await query.message.edit_text("Change Result Mode as your wish", reply_markup=InlineKeyboardMarkup(btn))
+        elif set_type == "button":
+            await save_group_settings(int(grp_id), 'result_page' set_type)
+            await query.message.edit_text("Successfully Added Buttons in result mode.")
+        elif set_type == "links":
+            await save_group_settings(int(grp_id), 'result_page' set_type)
+            await query.message.edit_text("Successfully Added Links Type in result mode.")
+        elif set_type == "telegraph":
+            await save_group_settings(int(grp_id), 'result_page' set_type)
+            await query.message.edit_text("Successfully Added Telegraph Mode in result mode.")
             
     elif query.data == "delete_all":
         files = await Media.count_documents()
@@ -756,16 +803,20 @@ async def auto_filter(client, msg, spoll=False):
     BUTTONS[key] = search
     files_link = ""
 
-    if settings['links']:
+    if settings['result_page'] == "links":
         btn = []
         for file_num, file in enumerate(files, start=1):
             files_link += f"""<b>\n\n{file_num}. <a href=https://t.me/{temp.U_NAME}?start=file_{message.chat.id}_{file.file_id}>[{get_size(file.file_size)}] {file.file_name}</a></b>"""
-    else:
+    elif settings['result_page'] == "button":
         btn = [[
             InlineKeyboardButton(text=f"📂 {get_size(file.file_size)} {file.file_name}", callback_data=f'file#{file.file_id}')
         ]
             for file in files
         ]
+    else:
+        btn = []
+        for file_num, file in enumerate(files, start=1):
+            files_link += f"""<b>\n\n{file_num}. <a href=https://t.me/{temp.U_NAME}?start=file_{message.chat.id}_{file.file_id}>[{get_size(file.file_size)}] {file.file_name}</a></b>"""
     
     if offset != "":
         if settings['shortlink']:
@@ -836,6 +887,24 @@ async def auto_filter(client, msg, spoll=False):
         cap = f"<b>💭 ʜᴇʏ {message.from_user.mention},\n♻️ ʜᴇʀᴇ ɪ ꜰᴏᴜɴᴅ ꜰᴏʀ ʏᴏᴜʀ sᴇᴀʀᴄʜ {search}...</b>"
     CAP[key] = cap
     del_msg = f"\n\n<b>⚠️ ᴛʜɪs ᴍᴇssᴀɢᴇ ᴡɪʟʟ ʙᴇ ᴀᴜᴛᴏ ᴅᴇʟᴇᴛᴇ ᴀꜰᴛᴇʀ <code>{get_readable_time(DELETE_TIME)}</code> ᴛᴏ ᴀᴠᴏɪᴅ ᴄᴏᴘʏʀɪɢʜᴛ ɪssᴜᴇs</b>" if settings["auto_delete"] else ''
+    if settings['result_page'] == "telegraph":
+        telegraph = Telegraph()
+        botid = (await client.get_me()).id
+        await telegraph.create_account(short_name=botid)
+        headline = "Hᴇʀᴇ ɪ ғᴏᴜɴᴅ ʀᴇsᴜʟᴛs ᴏɴ ʏᴏᴜʀ ᴏ̨ᴜᴇʀʏ {search}..."
+        response = await telegraph.create_page(headline, html_content=files_link)
+        telegraph_link = response['url']
+        final_link_text = """[ 🎦 Click Me For Results ! ](telegraph_link)"""
+        if settings["auto_delete"]:
+            k = await message.reply_text(cap + final_link_text + del_msg, reply_markup=InlineKeyboardMarkup(btn), disable_web_page_preview=True)
+            await asyncio.sleep(DELETE_TIME)
+            await k.delete()
+            try:
+                await message.delete()
+            except:
+                pass
+        else:
+            await message.reply_text(cap + final_link_text + del_msg, reply_markup=InlineKeyboardMarkup(btn), disable_web_page_preview=True)
     if imdb and imdb.get('poster'):
         try:
             if settings["auto_delete"]:
