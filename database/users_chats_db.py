@@ -21,7 +21,7 @@ class Database:
         'tutorial': TUTORIAL,
         'links': LINK_MODE,
         'fsub': AUTH_CHANNEL,
-        'is_stream': IS_STREAM
+        'is_stream': IS_STREAM,
         'links': DEFAULT_RESULT_MODE
     }
 
