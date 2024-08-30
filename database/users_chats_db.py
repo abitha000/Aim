@@ -22,7 +22,7 @@ class Database:
         'links': LINK_MODE,
         'fsub': AUTH_CHANNEL,
         'is_stream': IS_STREAM,
-        'links': DEFAULT_RESULT_MODE
+        'result_page': DEFAULT_RESULT_MODE
     }
 
     default_verify = {
